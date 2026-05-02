@@ -60,7 +60,9 @@ const formatUserResponse = (user) => {
     postsUsedThisMonth: user.postsUsedThisMonth || 0,
     monthlyPostLimit,
 
-    agreedToTerms: user.agreedToTerms,
+    agreedToTerms: Boolean(user.agreedToTerms),
+    isActive: Boolean(user.isActive),
+
     token: generateToken(user._id),
   };
 };
@@ -96,6 +98,8 @@ const registerUser = async (req, res) => {
       });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+
     if (confirmPassword && password !== confirmPassword) {
       return res.status(400).json({
         message: 'Passwords do not match',
@@ -108,7 +112,7 @@ const registerUser = async (req, res) => {
       });
     }
 
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ email: cleanEmail });
 
     if (userExists) {
       return res.status(400).json({
@@ -148,8 +152,8 @@ const registerUser = async (req, res) => {
     }
 
     const user = await User.create({
-      name,
-      email,
+      name: name.trim(),
+      email: cleanEmail,
       password,
       role: selectedRole,
       phone: phone || '',
@@ -181,9 +185,11 @@ const registerUser = async (req, res) => {
       agreedToTerms: Boolean(agreedToTerms),
     });
 
-    res.status(201).json(formatUserResponse(user));
+    return res.status(201).json(formatUserResponse(user));
   } catch (error) {
-    res.status(500).json({
+    console.error('Registration failed:', error);
+
+    return res.status(500).json({
       message: 'Registration failed',
       error: error.message,
     });
@@ -200,7 +206,9 @@ const loginUser = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ email });
+    const cleanEmail = email.trim().toLowerCase();
+
+    const user = await User.findOne({ email: cleanEmail });
 
     if (!user) {
       return res.status(401).json({
@@ -222,9 +230,11 @@ const loginUser = async (req, res) => {
       });
     }
 
-    res.json(formatUserResponse(user));
+    return res.json(formatUserResponse(user));
   } catch (error) {
-    res.status(500).json({
+    console.error('Login failed:', error);
+
+    return res.status(500).json({
       message: 'Login failed',
       error: error.message,
     });
@@ -232,7 +242,16 @@ const loginUser = async (req, res) => {
 };
 
 const getMe = async (req, res) => {
-  res.json(formatUserResponse(req.user));
+  try {
+    return res.json(formatUserResponse(req.user));
+  } catch (error) {
+    console.error('Get me failed:', error);
+
+    return res.status(500).json({
+      message: 'Unable to fetch user profile',
+      error: error.message,
+    });
+  }
 };
 
 module.exports = {
