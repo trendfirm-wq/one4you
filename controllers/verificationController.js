@@ -1,5 +1,4 @@
 const nodemailer = require('nodemailer');
-const axios = require('axios');
 const User = require('../models/User');
 
 const generateCode = () => {
@@ -10,27 +9,9 @@ const getExpiryTime = () => {
   return new Date(Date.now() + 10 * 60 * 1000);
 };
 
-const normalizeGhanaPhone = (phone) => {
-  if (!phone) return '';
-
-  let cleaned = phone.toString().replace(/\D/g, '');
-
-  // 0553934068 -> 233553934068
-  if (cleaned.startsWith('0')) {
-    cleaned = `233${cleaned.slice(1)}`;
-  }
-
-  // +233553934068 already becomes 233553934068 after cleaning
-  if (cleaned.startsWith('233')) {
-    return cleaned;
-  }
-
-  return cleaned;
-};
-
 const createTransporter = () => {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    throw new Error('Email settings are missing in .env');
+    throw new Error('Email settings are missing in environment variables');
   }
 
   return nodemailer.createTransport({
@@ -77,66 +58,6 @@ const sendVerificationEmail = async ({ to, name, code }) => {
   });
 };
 
-const sendPhoneVerificationCode = async ({ phone, code }) => {
-  const clientId = process.env.HUBTEL_SMS_CLIENT_ID;
-  const clientSecret = process.env.HUBTEL_SMS_CLIENT_SECRET;
-  const senderId = process.env.HUBTEL_SMS_SENDER_ID || 'TrendSpace';
-
-  console.log('--- HUBTEL SMS START ---');
-  console.log('Raw phone:', phone);
-  console.log('Sender ID:', senderId);
-  console.log('Client ID exists:', Boolean(clientId));
-  console.log('Client Secret exists:', Boolean(clientSecret));
-
-  if (!clientId || !clientSecret) {
-    throw new Error('Hubtel SMS credentials are missing in .env');
-  }
-
-  const formattedPhone = normalizeGhanaPhone(phone);
-
-  console.log('Formatted phone:', formattedPhone);
-
-  if (!formattedPhone) {
-    throw new Error('Invalid phone number');
-  }
-
-  const content = `Your One4You verification code is ${code}. It expires in 10 minutes.`;
-
-  try {
-    const res = await axios.get('https://sms.hubtel.com/v1/messages/send', {
-      params: {
-        clientsecret: clientSecret,
-        clientid: clientId,
-        from: senderId,
-        to: formattedPhone,
-        content,
-      },
-      timeout: 15000,
-    });
-
-    console.log('Hubtel SMS response:', res.data);
-    console.log('--- HUBTEL SMS END ---');
-
-    if (res.data?.status !== 0) {
-      throw new Error(
-        res.data?.statusDescription || 'Hubtel SMS request failed'
-      );
-    }
-
-    return res.data;
-  } catch (error) {
-    console.error('Hubtel SMS error:', error.response?.data || error.message);
-    console.log('--- HUBTEL SMS END WITH ERROR ---');
-
-    throw new Error(
-      error.response?.data?.statusDescription ||
-        error.response?.data?.message ||
-        error.message ||
-        'Hubtel SMS request failed'
-    );
-  }
-};
-
 // @desc    Request email verification code
 // @route   POST /api/verification/email/request
 // @access  Private
@@ -171,15 +92,17 @@ const requestEmailVerification = async (req, res) => {
 
     await user.save();
 
-    // TEMP TEST MODE
-    // We are not sending real email yet.
-    // The frontend will display this testCode.
+    await sendVerificationEmail({
+      to: user.email,
+      name: user.name,
+      code,
+    });
+
     return res.json({
-      message: 'Email verification code generated.',
-      testCode: code,
+      message: 'Email verification code sent. Please check your email.',
     });
   } catch (error) {
-    console.error('Email verification error:', error.message);
+    console.error('Email verification error:', error);
 
     return res.status(500).json({
       message: 'Failed to send email verification code',
@@ -217,7 +140,7 @@ const confirmEmailVerification = async (req, res) => {
 
     if (
       !user.emailVerificationCode ||
-      user.emailVerificationCode !== code ||
+      user.emailVerificationCode !== code.trim() ||
       !user.emailVerificationExpires ||
       user.emailVerificationExpires < new Date()
     ) {
@@ -232,124 +155,15 @@ const confirmEmailVerification = async (req, res) => {
 
     await user.save();
 
-    res.json({
+    return res.json({
       message: 'Email verified successfully',
       emailVerified: true,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error('Email confirmation error:', error);
+
+    return res.status(500).json({
       message: 'Failed to verify email',
-      error: error.message,
-    });
-  }
-};
-
-// @desc    Request phone verification code
-// @route   POST /api/verification/phone/request
-// @access  Private
-const requestPhoneVerification = async (req, res) => {
-  try {
-    console.log('PHONE VERIFICATION REQUEST HIT');
-    console.log('Logged in user:', req.user?._id);
-
-    const user = await User.findById(req.user._id);
-
-    if (!user) {
-      return res.status(404).json({
-        message: 'User not found',
-      });
-    }
-
-    console.log('User phone from database:', user.phone);
-
-    if (!user.phone) {
-      return res.status(400).json({
-        message: 'Please add a phone number before verification',
-      });
-    }
-
-    if (user.phoneVerified) {
-      return res.status(400).json({
-        message: 'Phone number is already verified',
-      });
-    }
-
-    const code = generateCode();
-
-    user.phoneVerificationCode = code;
-    user.phoneVerificationExpires = getExpiryTime();
-
-    await user.save();
-
-    await sendPhoneVerificationCode({
-      phone: user.phone,
-      code,
-    });
-
-    res.json({
-      message: 'Phone verification code sent. Please check your phone.',
-    });
-  } catch (error) {
-    console.error('Phone verification request error:', error.message);
-
-    res.status(500).json({
-      message: 'Failed to send phone verification code',
-      error: error.message,
-    });
-  }
-};
-
-// @desc    Confirm phone verification code
-// @route   POST /api/verification/phone/confirm
-// @access  Private
-const confirmPhoneVerification = async (req, res) => {
-  try {
-    const { code } = req.body;
-
-    if (!code) {
-      return res.status(400).json({
-        message: 'Verification code is required',
-      });
-    }
-
-    const user = await User.findById(req.user._id);
-
-    if (!user) {
-      return res.status(404).json({
-        message: 'User not found',
-      });
-    }
-
-    if (user.phoneVerified) {
-      return res.status(400).json({
-        message: 'Phone number is already verified',
-      });
-    }
-
-    if (
-      !user.phoneVerificationCode ||
-      user.phoneVerificationCode !== code ||
-      !user.phoneVerificationExpires ||
-      user.phoneVerificationExpires < new Date()
-    ) {
-      return res.status(400).json({
-        message: 'Invalid or expired phone verification code',
-      });
-    }
-
-    user.phoneVerified = true;
-    user.phoneVerificationCode = '';
-    user.phoneVerificationExpires = undefined;
-
-    await user.save();
-
-    res.json({
-      message: 'Phone number verified successfully',
-      phoneVerified: true,
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: 'Failed to verify phone number',
       error: error.message,
     });
   }
@@ -358,6 +172,4 @@ const confirmPhoneVerification = async (req, res) => {
 module.exports = {
   requestEmailVerification,
   confirmEmailVerification,
-  requestPhoneVerification,
-  confirmPhoneVerification,
 };
