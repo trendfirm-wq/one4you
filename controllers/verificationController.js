@@ -171,19 +171,17 @@ const requestEmailVerification = async (req, res) => {
 
     await user.save();
 
-    await sendVerificationEmail({
-      to: user.email,
-      name: user.name,
-      code,
-    });
-
-    res.json({
-      message: 'Email verification code sent. Please check your email.',
+    // TEMP TEST MODE
+    // We are not sending real email yet.
+    // The frontend will display this testCode.
+    return res.json({
+      message: 'Email verification code generated.',
+      testCode: code,
     });
   } catch (error) {
     console.error('Email verification error:', error.message);
 
-    res.status(500).json({
+    return res.status(500).json({
       message: 'Failed to send email verification code',
       error: error.message,
     });
