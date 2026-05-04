@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 const User = require('../models/User');
 
 const generateCode = () => {
@@ -8,7 +9,35 @@ const generateCode = () => {
 const getExpiryTime = () => {
   return new Date(Date.now() + 10 * 60 * 1000);
 };
+const sendVerificationSms = async ({ to, code }) => {
+  if (
+    !process.env.HUBTEL_SMS_CLIENT_ID ||
+    !process.env.HUBTEL_SMS_CLIENT_SECRET ||
+    !process.env.HUBTEL_SMS_SENDER_ID
+  ) {
+    throw new Error('Hubtel SMS settings are missing in environment variables');
+  }
 
+  const formattedPhone = formatGhanaPhoneNumber(to);
+
+  if (!formattedPhone || !formattedPhone.startsWith('233')) {
+    throw new Error('Invalid Ghana phone number');
+  }
+
+  const content = `Your One4You verification code is ${code}. It expires in 10 minutes.`;
+
+  const response = await axios.get('https://smsc.hubtel.com/v1/messages/send', {
+    params: {
+      clientsecret: process.env.HUBTEL_SMS_CLIENT_SECRET,
+      clientid: process.env.HUBTEL_SMS_CLIENT_ID,
+      from: process.env.HUBTEL_SMS_SENDER_ID,
+      to: formattedPhone,
+      content,
+    },
+  });
+
+  return response.data;
+};
 const createTransporter = () => {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     throw new Error('Email settings are missing in environment variables');
@@ -168,8 +197,117 @@ const confirmEmailVerification = async (req, res) => {
     });
   }
 };
+// @desc    Request phone verification code
+// @route   POST /api/verification/phone/request
+// @access  Private
+const requestPhoneVerification = async (req, res) => {
+  try {
+    console.log('PHONE VERIFICATION REQUEST HIT');
 
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({
+        message: 'User not found',
+      });
+    }
+
+    if (!user.phone) {
+      return res.status(400).json({
+        message: 'No phone number found on this account',
+      });
+    }
+
+    if (user.phoneVerified) {
+      return res.status(400).json({
+        message: 'Phone number is already verified',
+      });
+    }
+
+    const code = generateCode();
+
+    user.phoneVerificationCode = code;
+    user.phoneVerificationExpires = getExpiryTime();
+
+    await user.save();
+
+    await sendVerificationSms({
+      to: user.phone,
+      code,
+    });
+
+    return res.json({
+      message: 'Phone verification code sent. Please check your SMS.',
+    });
+  } catch (error) {
+    console.error('Phone verification error:', error.response?.data || error);
+
+    return res.status(500).json({
+      message: 'Failed to send phone verification code',
+      error: error.response?.data?.message || error.message,
+    });
+  }
+};
+// @desc    Confirm phone verification code
+// @route   POST /api/verification/phone/confirm
+// @access  Private
+const confirmPhoneVerification = async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({
+        message: 'Verification code is required',
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({
+        message: 'User not found',
+      });
+    }
+
+    if (user.phoneVerified) {
+      return res.status(400).json({
+        message: 'Phone number is already verified',
+      });
+    }
+
+    if (
+      !user.phoneVerificationCode ||
+      user.phoneVerificationCode !== code.trim() ||
+      !user.phoneVerificationExpires ||
+      user.phoneVerificationExpires < new Date()
+    ) {
+      return res.status(400).json({
+        message: 'Invalid or expired phone verification code',
+      });
+    }
+
+    user.phoneVerified = true;
+    user.phoneVerificationCode = '';
+    user.phoneVerificationExpires = undefined;
+
+    await user.save();
+
+    return res.json({
+      message: 'Phone number verified successfully',
+      phoneVerified: true,
+    });
+  } catch (error) {
+    console.error('Phone confirmation error:', error);
+
+    return res.status(500).json({
+      message: 'Failed to verify phone number',
+      error: error.message,
+    });
+  }
+};
 module.exports = {
   requestEmailVerification,
   confirmEmailVerification,
+  requestPhoneVerification,
+  confirmPhoneVerification,
 };

@@ -49,6 +49,18 @@ const applicationSchema = new mongoose.Schema(
       trim: true,
     },
 
+    applicationPdfUrl: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+
+    applicationPdfPublicId: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+
     status: {
       type: String,
       enum: [

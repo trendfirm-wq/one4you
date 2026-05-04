@@ -1,10 +1,35 @@
 const Application = require('../models/Application');
 const Job = require('../models/Job');
+const cloudinary = require('../config/cloudinary');
 
 const APPLICANT_PUBLIC_FIELDS = 'name email phone emailVerified phoneVerified';
 
 const JOB_PUBLIC_FIELDS =
   'title companyName location jobType category salary status applicationMethod applicationEmail applicationLink whatsappNumber phoneNumber';
+
+const uploadPdfToCloudinary = async (file) => {
+  if (!file) {
+    return {
+      url: '',
+      publicId: '',
+    };
+  }
+
+  const base64File = `data:${file.mimetype};base64,${file.buffer.toString(
+    'base64'
+  )}`;
+
+  const uploadResult = await cloudinary.uploader.upload(base64File, {
+    folder: 'joblyhub/applications',
+    resource_type: 'raw',
+    format: 'pdf',
+  });
+
+  return {
+    url: uploadResult.secure_url,
+    publicId: uploadResult.public_id,
+  };
+};
 
 // @desc    User responds/applies to an opportunity
 // @route   POST /api/applications/:jobId/apply
@@ -34,6 +59,12 @@ const applyForJob = async (req, res) => {
       });
     }
 
+    if (job.applicationMethod !== 'joblyhub') {
+      return res.status(400).json({
+        message: 'This job is not accepting applications through JoblyHub',
+      });
+    }
+
     const existingApplication = await Application.findOne({
       job: job._id,
       applicant: req.user._id,
@@ -42,6 +73,35 @@ const applyForJob = async (req, res) => {
     if (existingApplication) {
       return res.status(400).json({
         message: 'You have already responded to this opportunity',
+      });
+    }
+
+    let applicationPdfUrl = '';
+    let applicationPdfPublicId = '';
+
+    if (req.file) {
+      if (req.file.mimetype !== 'application/pdf') {
+        return res.status(400).json({
+          message: 'Please upload one PDF document only',
+        });
+      }
+
+      if (req.file.size > 5 * 1024 * 1024) {
+        return res.status(400).json({
+          message: 'PDF must be less than 5MB',
+        });
+      }
+
+      const uploadedPdf = await uploadPdfToCloudinary(req.file);
+
+      applicationPdfUrl = uploadedPdf.url;
+      applicationPdfPublicId = uploadedPdf.publicId;
+    }
+
+    if (!applicationPdfUrl && !resumeLink) {
+      return res.status(400).json({
+        message:
+          'Please upload your cover letter and CV/resume as one PDF document',
       });
     }
 
@@ -54,16 +114,18 @@ const applyForJob = async (req, res) => {
       message: message || '',
       coverLetter: coverLetter || '',
       resumeLink: resumeLink || '',
+      applicationPdfUrl,
+      applicationPdfPublicId,
       status: 'submitted',
     });
 
     res.status(201).json({
-      message: 'Response submitted successfully',
+      message: 'Application submitted successfully',
       application,
     });
   } catch (error) {
     res.status(500).json({
-      message: 'Failed to submit response',
+      message: 'Failed to submit application',
       error: error.message,
     });
   }
