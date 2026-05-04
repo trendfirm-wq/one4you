@@ -9,6 +9,24 @@ const generateCode = () => {
 const getExpiryTime = () => {
   return new Date(Date.now() + 10 * 60 * 1000);
 };
+const formatGhanaPhoneNumber = (phone) => {
+  if (!phone) return '';
+
+  let cleaned = phone.toString().trim();
+
+  cleaned = cleaned.replace(/\s+/g, '');
+  cleaned = cleaned.replace(/-/g, '');
+
+  if (cleaned.startsWith('+')) {
+    cleaned = cleaned.substring(1);
+  }
+
+  if (cleaned.startsWith('0')) {
+    cleaned = `233${cleaned.substring(1)}`;
+  }
+
+  return cleaned;
+};
 const sendVerificationSms = async ({ to, code }) => {
   if (
     !process.env.HUBTEL_SMS_CLIENT_ID ||
