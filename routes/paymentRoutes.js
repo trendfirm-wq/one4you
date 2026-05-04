@@ -8,7 +8,7 @@ const router = express.Router();
 
 const PLANS = {
   business: {
-    amount: 55,
+    amount: 2,
     postLimit: 20,
   },
   premium: {

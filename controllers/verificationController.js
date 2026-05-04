@@ -44,7 +44,7 @@ const sendVerificationSms = async ({ to, code }) => {
 
   const content = `Your One4You verification code is ${code}. It expires in 10 minutes.`;
 
-  const response = await axios.get('https://sms.hubtel.com/v1/messages/send', {
+  const response = await axios.get('https://smsc.hubtel.com/v1/messages/send', {
     params: {
       clientsecret: process.env.HUBTEL_SMS_CLIENT_SECRET,
       clientid: process.env.HUBTEL_SMS_CLIENT_ID,
