@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const axios = require('axios');
 const User = require('../models/User');
 
@@ -64,26 +64,20 @@ const sendVerificationSms = async ({ to, code }) => {
 
   return response.data;
 };
-const createTransporter = () => {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    throw new Error('Email settings are missing in environment variables');
+ 
+const sendVerificationEmail = async ({ to, name, code }) => {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('RESEND_API_KEY is missing in environment variables');
   }
 
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
-};
+  const resend = new Resend(process.env.RESEND_API_KEY);
 
-const sendVerificationEmail = async ({ to, name, code }) => {
-  const transporter = createTransporter();
+  const fromEmail =
+    process.env.RESEND_FROM_EMAIL || 'One4You <onboarding@resend.dev>';
 
-  await transporter.sendMail({
-    from: `"One4You" <${process.env.EMAIL_USER}>`,
-    to,
+  const { data, error } = await resend.emails.send({
+    from: fromEmail,
+    to: [to],
     subject: 'Verify your One4You email address',
     html: `
       <div style="font-family: Arial, sans-serif; background:#f8fafc; padding:30px;">
@@ -111,6 +105,15 @@ const sendVerificationEmail = async ({ to, name, code }) => {
       </div>
     `,
   });
+
+  if (error) {
+    console.error('Resend email error:', error);
+    throw new Error(error.message || 'Failed to send email with Resend');
+  }
+
+  console.log('RESEND EMAIL SENT:', data);
+
+  return data;
 };
 
 // @desc    Request email verification code
