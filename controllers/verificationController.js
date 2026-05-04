@@ -38,13 +38,13 @@ const sendVerificationSms = async ({ to, code }) => {
 
   const formattedPhone = formatGhanaPhoneNumber(to);
 
-  if (!formattedPhone || !formattedPhone.startsWith('233')) {
-    throw new Error('Invalid Ghana phone number');
+  if (!formattedPhone || !/^233\d{9}$/.test(formattedPhone)) {
+    throw new Error('Invalid Ghana phone number. Use format 233XXXXXXXXX');
   }
 
   const content = `Your One4You verification code is ${code}. It expires in 10 minutes.`;
 
-  const response = await axios.get('https://smsc.hubtel.com/v1/messages/send', {
+  const response = await axios.get('https://sms.hubtel.com/v1/messages/send', {
     params: {
       clientsecret: process.env.HUBTEL_SMS_CLIENT_SECRET,
       clientid: process.env.HUBTEL_SMS_CLIENT_ID,
@@ -53,6 +53,8 @@ const sendVerificationSms = async ({ to, code }) => {
       content,
     },
   });
+
+  console.log('HUBTEL SMS RESPONSE:', response.data);
 
   if (Number(response.data?.status) !== 0) {
     throw new Error(
@@ -236,13 +238,24 @@ const requestPhoneVerification = async (req, res) => {
       });
     }
 
-    if (!user.phone) {
+    const phoneFromRequest = req.body?.phone;
+    const phone = phoneFromRequest || user.phone;
+
+    if (!phone) {
       return res.status(400).json({
-        message: 'No phone number found on this account',
+        message: 'Phone number is required',
       });
     }
 
-    if (user.phoneVerified) {
+    const formattedPhone = formatGhanaPhoneNumber(phone);
+
+    if (!/^233\d{9}$/.test(formattedPhone)) {
+      return res.status(400).json({
+        message: 'Invalid Ghana phone number. Use format 233XXXXXXXXX',
+      });
+    }
+
+    if (user.phoneVerified && user.phone === formattedPhone) {
       return res.status(400).json({
         message: 'Phone number is already verified',
       });
@@ -250,13 +263,14 @@ const requestPhoneVerification = async (req, res) => {
 
     const code = generateCode();
 
+    user.phone = formattedPhone;
     user.phoneVerificationCode = code;
     user.phoneVerificationExpires = getExpiryTime();
 
     await user.save();
 
     await sendVerificationSms({
-      to: user.phone,
+      to: formattedPhone,
       code,
     });
 
@@ -268,7 +282,10 @@ const requestPhoneVerification = async (req, res) => {
 
     return res.status(500).json({
       message: 'Failed to send phone verification code',
-      error: error.response?.data?.message || error.message,
+      error:
+        error.response?.data?.statusDescription ||
+        error.response?.data?.message ||
+        error.message,
     });
   }
 };
