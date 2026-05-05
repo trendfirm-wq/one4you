@@ -12,15 +12,14 @@ const PLANS = {
     postLimit: 20,
   },
   premium: {
-    amount: 120,
+    amount: 5,
     postLimit: 50,
   },
   enterprise: {
-    amount: 250,
+    amount: 10,
     postLimit: 999999,
   },
 };
-
 const getExpiryDate = () => {
   const start = new Date();
   const expiry = new Date(start);
