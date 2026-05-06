@@ -1,8 +1,8 @@
 const express = require('express');
 
 const {
-  register,
-  login,
+  registerUser,
+  loginUser,
   getMe,
   uploadMyResume,
 } = require('../controllers/authController');
@@ -12,8 +12,8 @@ const { uploadResume } = require('../config/cloudinary');
 
 const router = express.Router();
 
-router.post('/register', register);
-router.post('/login', login);
+router.post('/register', registerUser);
+router.post('/login', loginUser);
 router.get('/me', protect, getMe);
 
 router.post(

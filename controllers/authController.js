@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
+const cloudinary = require('../config/cloudinary');
 
 const getUserCurrentPlan = (user) => {
   const now = new Date();
@@ -233,9 +234,9 @@ const loginUser = async (req, res) => {
     return res.json(formatUserResponse(user));
   } catch (error) {
     console.error('Login failed:', error);
-
-    return res.status(500).json({
-      message: 'Login failed',
+.status(500).json({
+      message:
+    return res 'Login failed',
       error: error.message,
     });
   }
@@ -259,10 +260,24 @@ const uploadMyResume = async (req, res) => {
       return res.status(400).json({ message: 'Please upload a resume file.' });
     }
 
+    if (req.file.mimetype !== 'application/pdf') {
+      return res.status(400).json({ message: 'Please upload PDF only.' });
+    }
+
+    const base64File = `data:${req.file.mimetype};base64,${req.file.buffer.toString(
+      'base64'
+    )}`;
+
+    const uploadResult = await cloudinary.uploader.upload(base64File, {
+      folder: 'one4you/resumes',
+      resource_type: 'raw',
+      format: 'pdf',
+    });
+
     const user = req.user;
 
-    user.resumeUrl = req.file.path;
-    user.resumePublicId = req.file.filename;
+    user.resumeUrl = uploadResult.secure_url;
+    user.resumePublicId = uploadResult.public_id;
     user.resumeOriginalName = req.file.originalname;
 
     await user.save();
@@ -271,7 +286,7 @@ const uploadMyResume = async (req, res) => {
       message: 'Resume uploaded successfully.',
       resumeUrl: user.resumeUrl,
       resumeOriginalName: user.resumeOriginalName,
-      user,
+      user: formatUserResponse(user),
     });
   } catch (error) {
     res.status(500).json({
@@ -284,6 +299,5 @@ module.exports = {
   registerUser,
   loginUser,
   getMe,
-   
   uploadMyResume,
 };
