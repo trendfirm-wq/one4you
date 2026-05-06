@@ -284,6 +284,6 @@ module.exports = {
   registerUser,
   loginUser,
   getMe,
-   updateProfile,
+   
   uploadMyResume,
 };
