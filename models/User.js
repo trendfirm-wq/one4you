@@ -132,10 +132,10 @@ const userSchema = new mongoose.Schema(
 
     // Plan / Subscription
     plan: {
-      type: String,
-      enum: ['free', 'business', 'premium', 'enterprise'],
-      default: 'free',
-    },
+  type: String,
+  enum: ['free', 'starter', 'premium', 'enterprise'],
+  default: 'free',
+},
 
     subscriptionStatus: {
       type: String,
@@ -172,11 +172,11 @@ const userSchema = new mongoose.Schema(
       default: 'none',
     },
 
-    pendingPlan: {
-      type: String,
-      enum: ['', 'business', 'premium', 'enterprise'],
-      default: '',
-    },
+   pendingPlan: {
+  type: String,
+  enum: ['', 'starter', 'premium', 'enterprise'],
+  default: '',
+},
 
     cancelAtExpiry: {
       type: Boolean,

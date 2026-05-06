@@ -7,16 +7,16 @@ const { protect } = require('../middleware/authMiddleware');
 const router = express.Router();
 
 const PLANS = {
-  business: {
-    amount: 2,
-    postLimit: 20,
+  starter: {
+    amount: 55,
+    postLimit: 15,
   },
   premium: {
-    amount: 5,
-    postLimit: 50,
+    amount: 450,
+    postLimit: 120,
   },
   enterprise: {
-    amount: 10,
+    amount: 2500,
     postLimit: 999999,
   },
 };
@@ -281,7 +281,8 @@ router.get('/hubtel/status/:reference', protect, async (req, res) => {
       subscriptionStart: user.subscriptionStart,
       subscriptionExpiry: user.subscriptionExpiry,
       postsUsedThisMonth: user.postsUsedThisMonth || 0,
-      monthlyPostLimit: PLANS[user.plan]?.postLimit || 5,
+      monthlyPostLimit:
+  user.plan === 'free' ? 5 : PLANS[user.plan]?.postLimit || 5,
     });
   } catch (error) {
     console.error('PAYMENT STATUS ERROR:', error);

@@ -3,8 +3,8 @@ const User = require('../models/User');
 
 const PLAN_LIMITS = {
   free: 5,
-  business: 20,
-  premium: 50,
+  starter: 15,
+  premium: 120,
   enterprise: 999999,
 };
 
@@ -140,7 +140,7 @@ const createJob = async (req, res) => {
       });
     }
 
-    const paidPlans = ['business', 'premium', 'enterprise'];
+    const paidPlans = ['starter', 'premium', 'enterprise'];
     const shouldAutoApprove =
       user.role === 'admin' || paidPlans.includes(currentPlan);
 
