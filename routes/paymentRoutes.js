@@ -41,7 +41,13 @@ router.post('/hubtel/pay', protect, async (req, res) => {
     }
 
     const user = await User.findById(req.user._id);
+if (user.plan === 'business') {
+  user.plan = 'starter';
+}
 
+if (user.pendingPlan === 'business') {
+  user.pendingPlan = 'starter';
+}
     if (!user) {
       return res.status(404).json({
         message: 'User not found',
@@ -195,7 +201,13 @@ router.post('/hubtel/callback', async (req, res) => {
     }
 
     const user = await User.findOne({ paymentReference: reference });
+if (user.plan === 'business') {
+  user.plan = 'starter';
+}
 
+if (user.pendingPlan === 'business') {
+  user.pendingPlan = 'starter';
+}
     if (!user) {
       console.log('No user found for reference:', reference);
       return res.status(404).json({
