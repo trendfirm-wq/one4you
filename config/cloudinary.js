@@ -1,12 +1,6 @@
 const cloudinary = require('cloudinary').v2;
-
-if (
-  !process.env.CLOUDINARY_CLOUD_NAME ||
-  !process.env.CLOUDINARY_API_KEY ||
-  !process.env.CLOUDINARY_API_SECRET
-) {
-  console.warn('Cloudinary environment variables are missing');
-}
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const multer = require('multer');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -14,4 +8,18 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-module.exports = cloudinary;
+const resumeStorage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'one4you/resumes',
+    resource_type: 'auto',
+    allowed_formats: ['pdf', 'doc', 'docx'],
+  },
+});
+
+const uploadResume = multer({
+  storage: resumeStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
+module.exports = { cloudinary, uploadResume };

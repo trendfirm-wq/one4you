@@ -146,7 +146,20 @@ const userSchema = new mongoose.Schema(
     subscriptionStart: {
       type: Date,
     },
+resumeUrl: {
+  type: String,
+  default: '',
+},
 
+resumePublicId: {
+  type: String,
+  default: '',
+},
+
+resumeOriginalName: {
+  type: String,
+  default: '',
+},
     subscriptionExpiry: {
       type: Date,
     },

@@ -76,8 +76,11 @@ const applyForJob = async (req, res) => {
       });
     }
 
-    let applicationPdfUrl = '';
-    let applicationPdfPublicId = '';
+    const user = req.user;
+
+    let applicationPdfUrl = user.resumeUrl || '';
+    let applicationPdfPublicId = user.resumePublicId || '';
+    let resumeOriginalName = user.resumeOriginalName || '';
 
     if (req.file) {
       if (req.file.mimetype !== 'application/pdf') {
@@ -96,18 +99,24 @@ const applyForJob = async (req, res) => {
 
       applicationPdfUrl = uploadedPdf.url;
       applicationPdfPublicId = uploadedPdf.publicId;
+      resumeOriginalName = req.file.originalname;
+
+      user.resumeUrl = uploadedPdf.url;
+      user.resumePublicId = uploadedPdf.publicId;
+      user.resumeOriginalName = req.file.originalname;
+
+      await user.save();
     }
 
     if (!applicationPdfUrl && !resumeLink) {
       return res.status(400).json({
-        message:
-          'Please upload your cover letter and CV/resume as one PDF document',
+        message: 'Please upload your resume before applying for this job.',
       });
     }
 
     const application = await Application.create({
       job: job._id,
-      applicant: req.user._id,
+      applicant: user._id,
       fullName,
       email,
       phone: phone || '',
@@ -116,6 +125,7 @@ const applyForJob = async (req, res) => {
       resumeLink: resumeLink || '',
       applicationPdfUrl,
       applicationPdfPublicId,
+      resumeOriginalName,
       status: 'submitted',
     });
 

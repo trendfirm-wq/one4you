@@ -253,9 +253,37 @@ const getMe = async (req, res) => {
     });
   }
 };
+const uploadMyResume = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Please upload a resume file.' });
+    }
 
+    const user = req.user;
+
+    user.resumeUrl = req.file.path;
+    user.resumePublicId = req.file.filename;
+    user.resumeOriginalName = req.file.originalname;
+
+    await user.save();
+
+    res.json({
+      message: 'Resume uploaded successfully.',
+      resumeUrl: user.resumeUrl,
+      resumeOriginalName: user.resumeOriginalName,
+      user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Resume upload failed.',
+      error: error.message,
+    });
+  }
+};
 module.exports = {
   registerUser,
   loginUser,
   getMe,
+   updateProfile,
+  uploadMyResume,
 };

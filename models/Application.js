@@ -19,7 +19,15 @@ const applicationSchema = new mongoose.Schema(
       required: [true, 'Full name is required'],
       trim: true,
     },
+resumeUrl: {
+  type: String,
+  required: true,
+},
 
+resumeOriginalName: {
+  type: String,
+  default: '',
+},
     email: {
       type: String,
       required: [true, 'Email is required'],
