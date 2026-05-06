@@ -1,13 +1,12 @@
 const PollVote = require('../models/PollVote');
 
-const HOME_OPPORTUNITY_POLL = 'home-opportunity-type';
+const HOME_OPPORTUNITY_POLL = 'home-opportunity-status';
 
 const pollOptions = [
-  'Jobs',
-  'Services / gigs',
-  'Business opportunities',
-  'Internships',
-  'Remote work',
+  'Actively looking',
+  'Open to opportunities',
+  'Not looking right now',
+  'Exploring services / gigs',
   'Just browsing',
 ];
 
@@ -30,9 +29,7 @@ const getHomeOpportunityPoll = async (req, res) => {
   try {
     const guestId = req.query.guestId || '';
 
-    const votes = await PollVote.find({
-      pollKey: HOME_OPPORTUNITY_POLL,
-    });
+    const votes = await PollVote.find({ pollKey: HOME_OPPORTUNITY_POLL });
 
     let userVote = '';
 
@@ -55,7 +52,7 @@ const getHomeOpportunityPoll = async (req, res) => {
     return res.json({
       success: true,
       pollKey: HOME_OPPORTUNITY_POLL,
-      question: 'What are you mostly looking for on One4You?',
+      question: 'What is your current opportunity search status?',
       options: pollOptions,
       results: buildResults(votes),
       totalVotes: votes.length,
@@ -90,14 +87,8 @@ const voteHomeOpportunityPoll = async (req, res) => {
     }
 
     const filter = req.user?._id
-      ? {
-          pollKey: HOME_OPPORTUNITY_POLL,
-          user: req.user._id,
-        }
-      : {
-          pollKey: HOME_OPPORTUNITY_POLL,
-          guestId,
-        };
+      ? { pollKey: HOME_OPPORTUNITY_POLL, user: req.user._id }
+      : { pollKey: HOME_OPPORTUNITY_POLL, guestId };
 
     const update = req.user?._id
       ? {
@@ -119,9 +110,7 @@ const voteHomeOpportunityPoll = async (req, res) => {
       runValidators: true,
     });
 
-    const votes = await PollVote.find({
-      pollKey: HOME_OPPORTUNITY_POLL,
-    });
+    const votes = await PollVote.find({ pollKey: HOME_OPPORTUNITY_POLL });
 
     return res.json({
       success: true,

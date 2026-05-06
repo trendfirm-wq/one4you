@@ -9,7 +9,11 @@ const { protectOptional } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-router.get('/home-opportunity-type', protectOptional, getHomeOpportunityPoll);
-router.post('/home-opportunity-type/vote', protectOptional, voteHomeOpportunityPoll);
+router.get('/home-opportunity-status', protectOptional, getHomeOpportunityPoll);
+router.post(
+  '/home-opportunity-status/vote',
+  protectOptional,
+  voteHomeOpportunityPoll
+);
 
 module.exports = router;
