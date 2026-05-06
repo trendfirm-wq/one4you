@@ -1,5 +1,4 @@
 const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
 
 cloudinary.config({
@@ -8,18 +7,10 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-const resumeStorage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: 'one4you/resumes',
-    resource_type: 'auto',
-    allowed_formats: ['pdf', 'doc', 'docx'],
-  },
-});
-
 const uploadResume = multer({
-  storage: resumeStorage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
 });
 
-module.exports = { cloudinary, uploadResume };
+module.exports = cloudinary;
+module.exports.uploadResume = uploadResume;
