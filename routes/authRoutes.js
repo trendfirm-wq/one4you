@@ -1,18 +1,19 @@
 const express = require('express');
-const { uploadResume } = require('../config/cloudinary');
 
 const {
-  registerUser,
-  loginUser,
+  register,
+  login,
   getMe,
+  uploadMyResume,
 } = require('../controllers/authController');
 
 const { protect } = require('../middleware/authMiddleware');
+const { uploadResume } = require('../config/cloudinary');
 
 const router = express.Router();
 
-router.post('/register', registerUser);
-router.post('/login', loginUser);
+router.post('/register', register);
+router.post('/login', login);
 router.get('/me', protect, getMe);
 
 router.post(
