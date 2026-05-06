@@ -53,6 +53,7 @@ const formatUserResponse = (user) => {
     highestQualification: user.highestQualification,
     experienceLevel: user.experienceLevel,
     resumeUrl: user.resumeUrl,
+    resumeOriginalName: user.resumeOriginalName,
 
     plan: currentPlan,
     subscriptionStatus: user.subscriptionStatus,
@@ -234,9 +235,9 @@ const loginUser = async (req, res) => {
     return res.json(formatUserResponse(user));
   } catch (error) {
     console.error('Login failed:', error);
-.status(500).json({
-      message:
-    return res 'Login failed',
+
+    return res.status(500).json({
+      message: 'Login failed',
       error: error.message,
     });
   }
@@ -254,6 +255,7 @@ const getMe = async (req, res) => {
     });
   }
 };
+
 const uploadMyResume = async (req, res) => {
   try {
     if (!req.file) {
@@ -282,19 +284,20 @@ const uploadMyResume = async (req, res) => {
 
     await user.save();
 
-    res.json({
+    return res.json({
       message: 'Resume uploaded successfully.',
       resumeUrl: user.resumeUrl,
       resumeOriginalName: user.resumeOriginalName,
       user: formatUserResponse(user),
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       message: 'Resume upload failed.',
       error: error.message,
     });
   }
 };
+
 module.exports = {
   registerUser,
   loginUser,
