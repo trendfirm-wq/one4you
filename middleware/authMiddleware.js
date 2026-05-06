@@ -51,8 +51,37 @@ const allowRoles = (...roles) => {
     next();
   };
 };
+const protectOptional = async (req, res, next) => {
+  let token;
 
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
+    try {
+      token = req.headers.authorization.split(' ')[1];
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      req.user = await User.findById(decoded.id).select('-password');
+
+      if (req.user && req.user.isActive) {
+        return next();
+      }
+
+      req.user = null;
+      return next();
+    } catch (error) {
+      req.user = null;
+      return next();
+    }
+  }
+
+  req.user = null;
+  next();
+};
 module.exports = {
   protect,
+  protectOptional,
   allowRoles,
 };

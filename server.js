@@ -23,6 +23,7 @@ app.use('/api/saved-jobs', require('./routes/savedJobRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/verification', require('./routes/verificationRoutes'));
 app.use('/api/chats', require('./routes/chatRoutes'));
+app.use('/api/polls', require('./routes/pollRoutes'));
 
 const PORT = process.env.PORT || 5000;
 
