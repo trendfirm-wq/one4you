@@ -5,6 +5,9 @@ const {
   loginUser,
   getMe,
   uploadMyResume,
+  getMyResumes,
+  setDefaultResume,
+  deleteResume,
 } = require('../controllers/authController');
 
 const { protect } = require('../middleware/authMiddleware');
@@ -16,11 +19,16 @@ router.post('/register', registerUser);
 router.post('/login', loginUser);
 router.get('/me', protect, getMe);
 
+router.get('/me/resumes', protect, getMyResumes);
+
 router.post(
   '/me/resume',
   protect,
   uploadResume.single('resume'),
   uploadMyResume
 );
+
+router.put('/me/resumes/:id/default', protect, setDefaultResume);
+router.delete('/me/resumes/:id', protect, deleteResume);
 
 module.exports = router;

@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
 const cloudinary = require('../config/cloudinary');
+const Resume = require('../models/Resume');
 
 const getUserCurrentPlan = (user) => {
   const now = new Date();
@@ -259,11 +260,15 @@ const getMe = async (req, res) => {
 const uploadMyResume = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: 'Please upload a resume file.' });
+      return res.status(400).json({
+        message: 'Please upload a resume file.',
+      });
     }
 
     if (req.file.mimetype !== 'application/pdf') {
-      return res.status(400).json({ message: 'Please upload PDF only.' });
+      return res.status(400).json({
+        message: 'Please upload PDF only.',
+      });
     }
 
     const base64File = `data:${req.file.mimetype};base64,${req.file.buffer.toString(
@@ -276,31 +281,134 @@ const uploadMyResume = async (req, res) => {
       format: 'pdf',
     });
 
-    const user = req.user;
+    const existingDefault = await Resume.findOne({
+      user: req.user._id,
+      isDefault: true,
+    });
 
-    user.resumeUrl = uploadResult.secure_url;
-    user.resumePublicId = uploadResult.public_id;
-    user.resumeOriginalName = req.file.originalname;
+    const resume = await Resume.create({
+      user: req.user._id,
+      fileUrl: uploadResult.secure_url,
+      publicId: uploadResult.public_id,
+      originalName: req.file.originalname,
+      isDefault: !existingDefault,
+    });
 
-    await user.save();
+    if (!existingDefault) {
+      req.user.resumeUrl = resume.fileUrl;
+      req.user.resumePublicId = resume.publicId;
+      req.user.resumeOriginalName = resume.originalName;
 
-    return res.json({
+      await req.user.save();
+    }
+
+    const resumes = await Resume.find({
+      user: req.user._id,
+    }).sort({ createdAt: -1 });
+
+    res.json({
       message: 'Resume uploaded successfully.',
-      resumeUrl: user.resumeUrl,
-      resumeOriginalName: user.resumeOriginalName,
-      user: formatUserResponse(user),
+      resumes,
+      defaultResume: resume,
+      user: formatUserResponse(req.user),
     });
   } catch (error) {
-    return res.status(500).json({
+    res.status(500).json({
       message: 'Resume upload failed.',
       error: error.message,
     });
   }
 };
+const getMyResumes = async (req, res) => {
+  try {
+    const resumes = await Resume.find({
+      user: req.user._id,
+    }).sort({ createdAt: -1 });
 
+    res.json(resumes);
+  } catch (error) {
+    res.status(500).json({
+      message: 'Failed to fetch resumes.',
+      error: error.message,
+    });
+  }
+};
+
+const setDefaultResume = async (req, res) => {
+  try {
+    const resume = await Resume.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
+    if (!resume) {
+      return res.status(404).json({
+        message: 'Resume not found.',
+      });
+    }
+
+    await Resume.updateMany(
+      { user: req.user._id },
+      { isDefault: false }
+    );
+
+    resume.isDefault = true;
+    await resume.save();
+
+    req.user.resumeUrl = resume.fileUrl;
+    req.user.resumePublicId = resume.publicId;
+    req.user.resumeOriginalName = resume.originalName;
+
+    await req.user.save();
+
+    res.json({
+      message: 'Default resume updated successfully.',
+      resume,
+      user: formatUserResponse(req.user),
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Failed to update default resume.',
+      error: error.message,
+    });
+  }
+};
+
+const deleteResume = async (req, res) => {
+  try {
+    const resume = await Resume.findOne({
+      _id: req.params.id,
+      user: req.user._id,
+    });
+
+    if (!resume) {
+      return res.status(404).json({
+        message: 'Resume not found.',
+      });
+    }
+
+    await cloudinary.uploader.destroy(resume.publicId, {
+      resource_type: 'raw',
+    });
+
+    await resume.deleteOne();
+
+    res.json({
+      message: 'Resume deleted successfully.',
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Failed to delete resume.',
+      error: error.message,
+    });
+  }
+};
 module.exports = {
   registerUser,
   loginUser,
   getMe,
   uploadMyResume,
+  getMyResumes,
+  setDefaultResume,
+  deleteResume,
 };
