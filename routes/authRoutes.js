@@ -11,10 +11,8 @@ const {
   uploadMyLogo,
 } = require('../controllers/authController');
 
-const { uploadResume, uploadLogo } = require('../config/cloudinary');
-
 const { protect } = require('../middleware/authMiddleware');
- 
+const { uploadResume, uploadLogo } = require('../config/cloudinary');
 
 const router = express.Router();
 
@@ -30,13 +28,15 @@ router.post(
   uploadResume.single('resume'),
   uploadMyResume
 );
+
+router.put('/me/resumes/:id/default', protect, setDefaultResume);
+router.delete('/me/resumes/:id', protect, deleteResume);
+
 router.post(
   '/me/logo',
   protect,
   uploadLogo.single('logo'),
   uploadMyLogo
 );
-router.put('/me/resumes/:id/default', protect, setDefaultResume);
-router.delete('/me/resumes/:id', protect, deleteResume);
 
 module.exports = router;
