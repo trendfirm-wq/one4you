@@ -1,273 +1,419 @@
-const User = require('../models/User');
-const generateToken = require('../utils/generateToken');
-const cloudinary = require('../config/cloudinary');
-const Resume = require('../models/Resume');
+  const User = require('../models/User');
+  const generateToken = require('../utils/generateToken');
+  const cloudinary = require('../config/cloudinary');
+  const Resume = require('../models/Resume');
 
-const getUserCurrentPlan = (user) => {
-  const now = new Date();
+  const getUserCurrentPlan = (user) => {
+    const now = new Date();
 
-  if (
-    user.plan !== 'free' &&
-    user.subscriptionStatus === 'active' &&
-    user.subscriptionExpiry &&
-    new Date(user.subscriptionExpiry) > now
-  ) {
-    return user.plan;
-  }
+    if (
+      user.plan !== 'free' &&
+      user.subscriptionStatus === 'active' &&
+      user.subscriptionExpiry &&
+      new Date(user.subscriptionExpiry) > now
+    ) {
+      return user.plan;
+    }
 
-  return 'free';
-};
-
-const getPlanLimit = (plan) => {
-  const limits = {
-    free: 5,
-    business: 20,
-    premium: 50,
-    enterprise: 999999,
+    return 'free';
   };
 
-  return limits[plan] || limits.free;
-};
+  const getPlanLimit = (plan) => {
+    const limits = {
+      free: 5,
+      business: 20,
+      premium: 50,
+      enterprise: 999999,
+    };
 
-const formatUserResponse = (user) => {
-  const currentPlan = getUserCurrentPlan(user);
-  const monthlyPostLimit = getPlanLimit(currentPlan);
-
-  return {
-    _id: user._id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    phone: user.phone,
-
-    emailVerified: Boolean(user.emailVerified),
-    phoneVerified: Boolean(user.phoneVerified),
-
-    companyName: user.companyName,
-    companyIndustry: user.companyIndustry,
-    companyWebsite: user.companyWebsite,
-    companyDescription: user.companyDescription,
-    companyLogo: user.companyLogo,
-
-    location: user.location,
-    preferredJobCategory: user.preferredJobCategory,
-    highestQualification: user.highestQualification,
-    experienceLevel: user.experienceLevel,
-    resumeUrl: user.resumeUrl,
-    resumeOriginalName: user.resumeOriginalName,
-
-    plan: currentPlan,
-    subscriptionStatus: user.subscriptionStatus,
-    subscriptionStart: user.subscriptionStart,
-    subscriptionExpiry: user.subscriptionExpiry,
-    postsUsedThisMonth: user.postsUsedThisMonth || 0,
-    monthlyPostLimit,
-
-    agreedToTerms: Boolean(user.agreedToTerms),
-    isActive: Boolean(user.isActive),
-
-    token: generateToken(user._id),
+    return limits[plan] || limits.free;
   };
-};
 
-const registerUser = async (req, res) => {
-  try {
-    const {
-      name,
-      email,
-      password,
-      confirmPassword,
-      role,
-      phone,
+  const formatUserResponse = (user) => {
+    const currentPlan = getUserCurrentPlan(user);
+    const monthlyPostLimit = getPlanLimit(currentPlan);
 
-      companyName,
-      companyIndustry,
-      companyWebsite,
-      companyDescription,
-      companyLogo,
+    return {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      phone: user.phone,
 
-      location,
-      preferredJobCategory,
-      highestQualification,
-      experienceLevel,
-      resumeUrl,
+      emailVerified: Boolean(user.emailVerified),
+      phoneVerified: Boolean(user.phoneVerified),
 
-      agreedToTerms,
-    } = req.body;
+      companyName: user.companyName,
+      companyIndustry: user.companyIndustry,
+      companyWebsite: user.companyWebsite,
+      companyDescription: user.companyDescription,
+      companyLogo: user.companyLogo,
 
-    if (!name || !email || !password) {
-      return res.status(400).json({
-        message: 'Please provide name, email and password',
-      });
-    }
+      location: user.location,
+      preferredJobCategory: user.preferredJobCategory,
+      highestQualification: user.highestQualification,
+      experienceLevel: user.experienceLevel,
+      resumeUrl: user.resumeUrl,
+      resumeOriginalName: user.resumeOriginalName,
 
-    const cleanEmail = email.trim().toLowerCase();
+      plan: currentPlan,
+      subscriptionStatus: user.subscriptionStatus,
+      subscriptionStart: user.subscriptionStart,
+      subscriptionExpiry: user.subscriptionExpiry,
+      postsUsedThisMonth: user.postsUsedThisMonth || 0,
+      monthlyPostLimit,
 
-    if (confirmPassword && password !== confirmPassword) {
-      return res.status(400).json({
-        message: 'Passwords do not match',
-      });
-    }
+      agreedToTerms: Boolean(user.agreedToTerms),
+      isActive: Boolean(user.isActive),
 
-    if (!agreedToTerms) {
-      return res.status(400).json({
-        message: 'You must agree to the Terms of Use and Privacy Policy',
-      });
-    }
+      token: generateToken(user._id),
+    };
+  };
 
-    const userExists = await User.findOne({ email: cleanEmail });
+  const registerUser = async (req, res) => {
+    try {
+      const {
+        name,
+        email,
+        password,
+        confirmPassword,
+        role,
+        phone,
 
-    if (userExists) {
-      return res.status(400).json({
-        message: 'User already exists',
-      });
-    }
+        companyName,
+        companyIndustry,
+        companyWebsite,
+        companyDescription,
+        companyLogo,
 
-    const allowedRoles = ['employer', 'job_seeker'];
+        location,
+        preferredJobCategory,
+        highestQualification,
+        experienceLevel,
+        resumeUrl,
 
-    let selectedRole = 'job_seeker';
+        agreedToTerms,
+      } = req.body;
 
-    if (role && allowedRoles.includes(role)) {
-      selectedRole = role;
-    }
-
-    if (selectedRole === 'employer') {
-      if (!companyName || !companyIndustry) {
+      if (!name || !email || !password) {
         return res.status(400).json({
-          message: 'Business name and business industry are required',
+          message: 'Please provide name, email and password',
         });
       }
-    }
 
-    if (selectedRole === 'job_seeker') {
-      if (
-        !phone ||
-        !location ||
-        !preferredJobCategory ||
-        !highestQualification ||
-        !experienceLevel
-      ) {
+      const cleanEmail = email.trim().toLowerCase();
+
+      if (confirmPassword && password !== confirmPassword) {
         return res.status(400).json({
-          message:
-            'Phone, location, preferred opportunity category, highest qualification and experience level are required',
+          message: 'Passwords do not match',
         });
       }
-    }
 
-    const user = await User.create({
-      name: name.trim(),
-      email: cleanEmail,
-      password,
-      role: selectedRole,
-      phone: phone || '',
+      if (!agreedToTerms) {
+        return res.status(400).json({
+          message: 'You must agree to the Terms of Use and Privacy Policy',
+        });
+      }
 
-      companyName: selectedRole === 'employer' ? companyName || '' : '',
-      companyIndustry: selectedRole === 'employer' ? companyIndustry || '' : '',
-      companyWebsite: selectedRole === 'employer' ? companyWebsite || '' : '',
-      companyDescription:
-        selectedRole === 'employer' ? companyDescription || '' : '',
-      companyLogo: selectedRole === 'employer' ? companyLogo || '' : '',
+      const userExists = await User.findOne({ email: cleanEmail });
 
-      location: selectedRole === 'job_seeker' ? location || '' : '',
-      preferredJobCategory:
-        selectedRole === 'job_seeker' ? preferredJobCategory || '' : '',
-      highestQualification:
-        selectedRole === 'job_seeker' ? highestQualification || '' : '',
-      experienceLevel:
-        selectedRole === 'job_seeker' ? experienceLevel || '' : '',
-      resumeUrl: selectedRole === 'job_seeker' ? resumeUrl || '' : '',
+      if (userExists) {
+        return res.status(400).json({
+          message: 'User already exists',
+        });
+      }
 
-      plan: 'free',
-      subscriptionStatus: 'inactive',
-      postsUsedThisMonth: 0,
-      lastPostReset: new Date(),
+      const allowedRoles = ['employer', 'job_seeker'];
 
-      emailVerified: false,
-      phoneVerified: false,
+      let selectedRole = 'job_seeker';
 
-      agreedToTerms: Boolean(agreedToTerms),
-    });
+      if (role && allowedRoles.includes(role)) {
+        selectedRole = role;
+      }
 
-    return res.status(201).json(formatUserResponse(user));
-  } catch (error) {
-    console.error('Registration failed:', error);
+      if (selectedRole === 'employer') {
+        if (!companyName || !companyIndustry) {
+          return res.status(400).json({
+            message: 'Business name and business industry are required',
+          });
+        }
+      }
 
-    return res.status(500).json({
-      message: 'Registration failed',
-      error: error.message,
-    });
-  }
-};
+      if (selectedRole === 'job_seeker') {
+        if (
+          !phone ||
+          !location ||
+          !preferredJobCategory ||
+          !highestQualification ||
+          !experienceLevel
+        ) {
+          return res.status(400).json({
+            message:
+              'Phone, location, preferred opportunity category, highest qualification and experience level are required',
+          });
+        }
+      }
 
-const loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+      const user = await User.create({
+        name: name.trim(),
+        email: cleanEmail,
+        password,
+        role: selectedRole,
+        phone: phone || '',
 
-    if (!email || !password) {
-      return res.status(400).json({
-        message: 'Please provide email and password',
+        companyName: selectedRole === 'employer' ? companyName || '' : '',
+        companyIndustry: selectedRole === 'employer' ? companyIndustry || '' : '',
+        companyWebsite: selectedRole === 'employer' ? companyWebsite || '' : '',
+        companyDescription:
+          selectedRole === 'employer' ? companyDescription || '' : '',
+        companyLogo: selectedRole === 'employer' ? companyLogo || '' : '',
+
+        location: selectedRole === 'job_seeker' ? location || '' : '',
+        preferredJobCategory:
+          selectedRole === 'job_seeker' ? preferredJobCategory || '' : '',
+        highestQualification:
+          selectedRole === 'job_seeker' ? highestQualification || '' : '',
+        experienceLevel:
+          selectedRole === 'job_seeker' ? experienceLevel || '' : '',
+        resumeUrl: selectedRole === 'job_seeker' ? resumeUrl || '' : '',
+
+        plan: 'free',
+        subscriptionStatus: 'inactive',
+        postsUsedThisMonth: 0,
+        lastPostReset: new Date(),
+
+        emailVerified: false,
+        phoneVerified: false,
+
+        agreedToTerms: Boolean(agreedToTerms),
+      });
+
+      return res.status(201).json(formatUserResponse(user));
+    } catch (error) {
+      console.error('Registration failed:', error);
+
+      return res.status(500).json({
+        message: 'Registration failed',
+        error: error.message,
       });
     }
+  };
 
-    const cleanEmail = email.trim().toLowerCase();
+  const loginUser = async (req, res) => {
+    try {
+      const { email, password } = req.body;
 
-    const user = await User.findOne({ email: cleanEmail });
+      if (!email || !password) {
+        return res.status(400).json({
+          message: 'Please provide email and password',
+        });
+      }
 
-    if (!user) {
-      return res.status(401).json({
-        message: 'Invalid email or password',
+      const cleanEmail = email.trim().toLowerCase();
+
+      const user = await User.findOne({ email: cleanEmail });
+
+      if (!user) {
+        return res.status(401).json({
+          message: 'Invalid email or password',
+        });
+      }
+
+      if (!user.isActive) {
+        return res.status(403).json({
+          message: 'Your account has been disabled',
+        });
+      }
+
+      const isMatch = await user.matchPassword(password);
+
+      if (!isMatch) {
+        return res.status(401).json({
+          message: 'Invalid email or password',
+        });
+      }
+
+      return res.json(formatUserResponse(user));
+    } catch (error) {
+      console.error('Login failed:', error);
+
+      return res.status(500).json({
+        message: 'Login failed',
+        error: error.message,
       });
     }
+  };
 
-    if (!user.isActive) {
-      return res.status(403).json({
-        message: 'Your account has been disabled',
+  const getMe = async (req, res) => {
+    try {
+      return res.json(formatUserResponse(req.user));
+    } catch (error) {
+      console.error('Get me failed:', error);
+
+      return res.status(500).json({
+        message: 'Unable to fetch user profile',
+        error: error.message,
       });
     }
+  };
 
-    const isMatch = await user.matchPassword(password);
+  const uploadMyResume = async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          message: 'Please upload a resume file.',
+        });
+      }
 
-    if (!isMatch) {
-      return res.status(401).json({
-        message: 'Invalid email or password',
+      if (req.file.mimetype !== 'application/pdf') {
+        return res.status(400).json({
+          message: 'Please upload PDF only.',
+        });
+      }
+
+      const base64File = `data:${req.file.mimetype};base64,${req.file.buffer.toString(
+        'base64'
+      )}`;
+
+      const uploadResult = await cloudinary.uploader.upload(base64File, {
+        folder: 'one4you/resumes',
+        resource_type: 'raw',
+        format: 'pdf',
+      });
+
+      const existingDefault = await Resume.findOne({
+        user: req.user._id,
+        isDefault: true,
+      });
+
+      const resume = await Resume.create({
+        user: req.user._id,
+        fileUrl: uploadResult.secure_url,
+        publicId: uploadResult.public_id,
+        originalName: req.file.originalname,
+        isDefault: !existingDefault,
+      });
+
+      if (!existingDefault) {
+        req.user.resumeUrl = resume.fileUrl;
+        req.user.resumePublicId = resume.publicId;
+        req.user.resumeOriginalName = resume.originalName;
+
+        await req.user.save();
+      }
+
+      const resumes = await Resume.find({
+        user: req.user._id,
+      }).sort({ createdAt: -1 });
+
+      res.json({
+        message: 'Resume uploaded successfully.',
+        resumes,
+        defaultResume: resume,
+        user: formatUserResponse(req.user),
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: 'Resume upload failed.',
+        error: error.message,
       });
     }
+  };
+  const getMyResumes = async (req, res) => {
+    try {
+      const resumes = await Resume.find({
+        user: req.user._id,
+      }).sort({ createdAt: -1 });
 
-    return res.json(formatUserResponse(user));
-  } catch (error) {
-    console.error('Login failed:', error);
+      res.json(resumes);
+    } catch (error) {
+      res.status(500).json({
+        message: 'Failed to fetch resumes.',
+        error: error.message,
+      });
+    }
+  };
 
-    return res.status(500).json({
-      message: 'Login failed',
-      error: error.message,
-    });
-  }
-};
+  const setDefaultResume = async (req, res) => {
+    try {
+      const resume = await Resume.findOne({
+        _id: req.params.id,
+        user: req.user._id,
+      });
 
-const getMe = async (req, res) => {
-  try {
-    return res.json(formatUserResponse(req.user));
-  } catch (error) {
-    console.error('Get me failed:', error);
+      if (!resume) {
+        return res.status(404).json({
+          message: 'Resume not found.',
+        });
+      }
 
-    return res.status(500).json({
-      message: 'Unable to fetch user profile',
-      error: error.message,
-    });
-  }
-};
+      await Resume.updateMany(
+        { user: req.user._id },
+        { isDefault: false }
+      );
 
-const uploadMyResume = async (req, res) => {
+      resume.isDefault = true;
+      await resume.save();
+
+      req.user.resumeUrl = resume.fileUrl;
+      req.user.resumePublicId = resume.publicId;
+      req.user.resumeOriginalName = resume.originalName;
+
+      await req.user.save();
+
+      res.json({
+        message: 'Default resume updated successfully.',
+        resume,
+        user: formatUserResponse(req.user),
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: 'Failed to update default resume.',
+        error: error.message,
+      });
+    }
+  };
+
+  const deleteResume = async (req, res) => {
+    try {
+      const resume = await Resume.findOne({
+        _id: req.params.id,
+        user: req.user._id,
+      });
+
+      if (!resume) {
+        return res.status(404).json({
+          message: 'Resume not found.',
+        });
+      }
+
+      await cloudinary.uploader.destroy(resume.publicId, {
+        resource_type: 'raw',
+      });
+
+      await resume.deleteOne();
+
+      res.json({
+        message: 'Resume deleted successfully.',
+      });
+    } catch (error) {
+      res.status(500).json({
+        message: 'Failed to delete resume.',
+        error: error.message,
+      });
+    }
+  };
+  const uploadMyLogo = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({
-        message: 'Please upload a resume file.',
-      });
+      return res.status(400).json({ message: 'Please upload a logo image.' });
     }
 
-    if (req.file.mimetype !== 'application/pdf') {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+    if (!allowedTypes.includes(req.file.mimetype)) {
       return res.status(400).json({
-        message: 'Please upload PDF only.',
+        message: 'Please upload JPG, PNG, or WEBP image only.',
       });
     }
 
@@ -276,129 +422,21 @@ const uploadMyResume = async (req, res) => {
     )}`;
 
     const uploadResult = await cloudinary.uploader.upload(base64File, {
-      folder: 'one4you/resumes',
-      resource_type: 'raw',
-      format: 'pdf',
+      folder: 'one4you/logos',
+      resource_type: 'image',
     });
 
-    const existingDefault = await Resume.findOne({
-      user: req.user._id,
-      isDefault: true,
-    });
-
-    const resume = await Resume.create({
-      user: req.user._id,
-      fileUrl: uploadResult.secure_url,
-      publicId: uploadResult.public_id,
-      originalName: req.file.originalname,
-      isDefault: !existingDefault,
-    });
-
-    if (!existingDefault) {
-      req.user.resumeUrl = resume.fileUrl;
-      req.user.resumePublicId = resume.publicId;
-      req.user.resumeOriginalName = resume.originalName;
-
-      await req.user.save();
-    }
-
-    const resumes = await Resume.find({
-      user: req.user._id,
-    }).sort({ createdAt: -1 });
-
-    res.json({
-      message: 'Resume uploaded successfully.',
-      resumes,
-      defaultResume: resume,
-      user: formatUserResponse(req.user),
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: 'Resume upload failed.',
-      error: error.message,
-    });
-  }
-};
-const getMyResumes = async (req, res) => {
-  try {
-    const resumes = await Resume.find({
-      user: req.user._id,
-    }).sort({ createdAt: -1 });
-
-    res.json(resumes);
-  } catch (error) {
-    res.status(500).json({
-      message: 'Failed to fetch resumes.',
-      error: error.message,
-    });
-  }
-};
-
-const setDefaultResume = async (req, res) => {
-  try {
-    const resume = await Resume.findOne({
-      _id: req.params.id,
-      user: req.user._id,
-    });
-
-    if (!resume) {
-      return res.status(404).json({
-        message: 'Resume not found.',
-      });
-    }
-
-    await Resume.updateMany(
-      { user: req.user._id },
-      { isDefault: false }
-    );
-
-    resume.isDefault = true;
-    await resume.save();
-
-    req.user.resumeUrl = resume.fileUrl;
-    req.user.resumePublicId = resume.publicId;
-    req.user.resumeOriginalName = resume.originalName;
-
+    req.user.companyLogo = uploadResult.secure_url;
     await req.user.save();
 
-    res.json({
-      message: 'Default resume updated successfully.',
-      resume,
+    return res.json({
+      message: 'Business logo uploaded successfully.',
+      companyLogo: req.user.companyLogo,
       user: formatUserResponse(req.user),
     });
   } catch (error) {
-    res.status(500).json({
-      message: 'Failed to update default resume.',
-      error: error.message,
-    });
-  }
-};
-
-const deleteResume = async (req, res) => {
-  try {
-    const resume = await Resume.findOne({
-      _id: req.params.id,
-      user: req.user._id,
-    });
-
-    if (!resume) {
-      return res.status(404).json({
-        message: 'Resume not found.',
-      });
-    }
-
-    await cloudinary.uploader.destroy(resume.publicId, {
-      resource_type: 'raw',
-    });
-
-    await resume.deleteOne();
-
-    res.json({
-      message: 'Resume deleted successfully.',
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: 'Failed to delete resume.',
+    return res.status(500).json({
+      message: 'Logo upload failed.',
       error: error.message,
     });
   }
@@ -411,4 +449,5 @@ module.exports = {
   getMyResumes,
   setDefaultResume,
   deleteResume,
+  uploadMyLogo,
 };

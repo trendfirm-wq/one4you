@@ -8,7 +8,10 @@ const {
   getMyResumes,
   setDefaultResume,
   deleteResume,
+  uploadMyLogo,
 } = require('../controllers/authController');
+
+const { uploadResume, uploadLogo } = require('../config/cloudinary');
 
 const { protect } = require('../middleware/authMiddleware');
 const { uploadResume } = require('../config/cloudinary');
@@ -27,7 +30,12 @@ router.post(
   uploadResume.single('resume'),
   uploadMyResume
 );
-
+router.post(
+  '/me/logo',
+  protect,
+  uploadLogo.single('logo'),
+  uploadMyLogo
+);
 router.put('/me/resumes/:id/default', protect, setDefaultResume);
 router.delete('/me/resumes/:id', protect, deleteResume);
 
