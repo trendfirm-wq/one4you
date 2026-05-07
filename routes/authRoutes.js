@@ -11,10 +11,10 @@ const {
   uploadMyLogo,
 } = require('../controllers/authController');
 
- 
+const { uploadResume, uploadLogo } = require('../config/cloudinary');
 
 const { protect } = require('../middleware/authMiddleware');
-const { uploadResume } = require('../config/cloudinary');
+ 
 
 const router = express.Router();
 
