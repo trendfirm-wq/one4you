@@ -11,11 +11,12 @@ const uploadResume = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
 });
+
 const uploadLogo = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 2 * 1024 * 1024 },
 });
 
-module.exports.uploadLogo = uploadLogo;
 module.exports = cloudinary;
 module.exports.uploadResume = uploadResume;
+module.exports.uploadLogo = uploadLogo;
