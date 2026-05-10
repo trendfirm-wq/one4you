@@ -27,6 +27,44 @@ const formatGhanaPhoneNumber = (phone) => {
 
   return cleaned;
 };
+const sendVerificationSms = async ({ to, code }) => {
+  if (
+    !process.env.HUBTEL_SMS_CLIENT_ID ||
+    !process.env.HUBTEL_SMS_CLIENT_SECRET ||
+    !process.env.HUBTEL_SMS_SENDER_ID
+  ) {
+    throw new Error('Hubtel SMS settings are missing in environment variables');
+  }
+
+  const formattedPhone = formatGhanaPhoneNumber(to);
+
+  if (!formattedPhone || !/^233\d{9}$/.test(formattedPhone)) {
+    throw new Error('Invalid Ghana phone number. Use format 233XXXXXXXXX');
+  }
+
+  const content = `Your One4You verification code is ${code}. It expires in 10 minutes.`;
+
+  const response = await axios.get('https://sms.hubtel.com/v1/messages/send', {
+    params: {
+      clientsecret: process.env.HUBTEL_SMS_CLIENT_SECRET,
+      clientid: process.env.HUBTEL_SMS_CLIENT_ID,
+      from: process.env.HUBTEL_SMS_SENDER_ID,
+      to: formattedPhone,
+      content,
+    },
+  });
+
+  console.log('HUBTEL SMS RESPONSE:', response.data);
+
+  if (Number(response.data?.status) !== 0) {
+    throw new Error(
+      response.data?.statusDescription || 'Hubtel SMS request failed'
+    );
+  }
+
+  return response.data;
+};
+ 
 const sendVerificationEmail = async ({ to, name, code }) => {
   console.log('========== GMAIL EMAIL DEBUG START ==========');
 
@@ -86,69 +124,6 @@ const sendVerificationEmail = async ({ to, name, code }) => {
   console.log('========== GMAIL EMAIL DEBUG END ==========');
 
   return info;
-};
-const sendVerificationEmail = async ({ to, name, code }) => {
-  console.log('========== RESEND EMAIL DEBUG START ==========');
-  console.log('RESEND_API_KEY exists:', Boolean(process.env.RESEND_API_KEY));
-  console.log(
-    'RESEND_API_KEY starts with:',
-    process.env.RESEND_API_KEY
-      ? process.env.RESEND_API_KEY.substring(0, 5)
-      : 'missing'
-  );
-  console.log('RESEND_FROM_EMAIL:', process.env.RESEND_FROM_EMAIL);
-  console.log('Sending email to:', to);
-
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error('RESEND_API_KEY is missing in environment variables');
-  }
-
-  const resend = new Resend(process.env.RESEND_API_KEY);
-
-  const fromEmail =
-    process.env.RESEND_FROM_EMAIL || 'One4You <onboarding@resend.dev>';
-
-  const { data, error } = await resend.emails.send({
-    from: fromEmail,
-    to: [to],
-    subject: 'Verify your One4You email address',
-    html: `
-      <div style="font-family: Arial, sans-serif; background:#f8fafc; padding:30px;">
-        <div style="max-width:560px; margin:0 auto; background:#ffffff; border-radius:18px; padding:28px; border:1px solid #e2e8f0;">
-          <h2 style="margin:0 0 12px; color:#0f172a;">Verify your email</h2>
-
-          <p style="color:#475569; font-size:15px; line-height:1.7;">
-            Hello ${name || 'there'}, use the verification code below to verify your One4You account.
-          </p>
-
-          <div style="margin:24px 0; padding:18px; border-radius:14px; background:#eff6ff; text-align:center;">
-            <div style="font-size:34px; letter-spacing:8px; font-weight:800; color:#2563eb;">
-              ${code}
-            </div>
-          </div>
-
-          <p style="color:#64748b; font-size:14px;">
-            This code will expire in 10 minutes. If you did not request this, you can ignore this email.
-          </p>
-
-          <p style="margin-top:24px; color:#0f172a; font-weight:700;">
-            One4You Team
-          </p>
-        </div>
-      </div>
-    `,
-  });
-
-  console.log('RESEND DATA:', data);
-  console.log('RESEND ERROR:', error);
-  console.log('========== RESEND EMAIL DEBUG END ==========');
-
-  if (error) {
-    console.error('FULL RESEND EMAIL ERROR:', JSON.stringify(error, null, 2));
-    throw new Error(error.message || 'Failed to send email with Resend');
-  }
-
-  return data;
 };
 // @desc    Request email verification code
 // @route   POST /api/verification/email/request
