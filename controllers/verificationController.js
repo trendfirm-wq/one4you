@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const axios = require('axios');
 const User = require('../models/User');
 
@@ -66,35 +66,19 @@ const sendVerificationSms = async ({ to, code }) => {
 };
  
 const sendVerificationEmail = async ({ to, name, code }) => {
-  console.log('========== GMAIL EMAIL DEBUG START ==========');
-
-  console.log('EMAIL_USER exists:', Boolean(process.env.EMAIL_USER));
-  console.log('EMAIL_PASS exists:', Boolean(process.env.EMAIL_PASS));
-  console.log('EMAIL_FROM:', process.env.EMAIL_FROM);
-  console.log('Sending email to:', to);
-
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    throw new Error('EMAIL_USER or EMAIL_PASS missing');
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('RESEND_API_KEY missing');
   }
 
- const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
-});
+  const resend = new Resend(process.env.RESEND_API_KEY);
 
-  const mailOptions = {
-    from:
-      process.env.EMAIL_FROM ||
-      `One4You <${process.env.EMAIL_USER}>`,
-    to,
+  const fromEmail =
+    process.env.RESEND_FROM_EMAIL ||
+    'One4You <noreply@one4yough.com>';
+
+  const { data, error } = await resend.emails.send({
+    from: fromEmail,
+    to: [to],
     subject: 'Verify your One4You email address',
     html: `
       <div style="font-family: Arial, sans-serif; background:#f8fafc; padding:30px;">
@@ -112,7 +96,7 @@ const sendVerificationEmail = async ({ to, name, code }) => {
           </div>
 
           <p style="color:#64748b; font-size:14px;">
-            This code will expire in 10 minutes. If you did not request this, you can ignore this email.
+            This code will expire in 10 minutes.
           </p>
 
           <p style="margin-top:24px; color:#0f172a; font-weight:700;">
@@ -121,15 +105,18 @@ const sendVerificationEmail = async ({ to, name, code }) => {
         </div>
       </div>
     `,
-  };
+  });
 
-  const info = await transporter.sendMail(mailOptions);
+  if (error) {
+    console.error('RESEND EMAIL ERROR:', error);
+    throw new Error(error.message || 'Failed to send email');
+  }
 
-  console.log('EMAIL SENT:', info.response);
-  console.log('========== GMAIL EMAIL DEBUG END ==========');
+  console.log('RESEND EMAIL SENT:', data);
 
-  return info;
+  return data;
 };
+
 // @desc    Request email verification code
 // @route   POST /api/verification/email/request
 // @access  Private
@@ -173,12 +160,8 @@ const requestEmailVerification = async (req, res) => {
     return res.json({
       message: 'Email verification code sent. Please check your email.',
     });
-    } catch (error) {
-    console.error('========== EMAIL VERIFICATION ERROR ==========');
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    console.error('Full error:', error);
-    console.error('=============================================');
+  } catch (error) {
+    console.error('Email verification error:', error);
 
     return res.status(500).json({
       message: 'Failed to send email verification code',
