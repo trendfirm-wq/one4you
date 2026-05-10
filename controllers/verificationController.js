@@ -66,6 +66,17 @@ const sendVerificationSms = async ({ to, code }) => {
 };
  
 const sendVerificationEmail = async ({ to, name, code }) => {
+  console.log('========== RESEND EMAIL DEBUG START ==========');
+  console.log('RESEND_API_KEY exists:', Boolean(process.env.RESEND_API_KEY));
+  console.log(
+    'RESEND_API_KEY starts with:',
+    process.env.RESEND_API_KEY
+      ? process.env.RESEND_API_KEY.substring(0, 5)
+      : 'missing'
+  );
+  console.log('RESEND_FROM_EMAIL:', process.env.RESEND_FROM_EMAIL);
+  console.log('Sending email to:', to);
+
   if (!process.env.RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY is missing in environment variables');
   }
@@ -106,16 +117,17 @@ const sendVerificationEmail = async ({ to, name, code }) => {
     `,
   });
 
+  console.log('RESEND DATA:', data);
+  console.log('RESEND ERROR:', error);
+  console.log('========== RESEND EMAIL DEBUG END ==========');
+
   if (error) {
-    console.error('Resend email error:', error);
+    console.error('FULL RESEND EMAIL ERROR:', JSON.stringify(error, null, 2));
     throw new Error(error.message || 'Failed to send email with Resend');
   }
 
-  console.log('RESEND EMAIL SENT:', data);
-
   return data;
 };
-
 // @desc    Request email verification code
 // @route   POST /api/verification/email/request
 // @access  Private
@@ -159,8 +171,12 @@ const requestEmailVerification = async (req, res) => {
     return res.json({
       message: 'Email verification code sent. Please check your email.',
     });
-  } catch (error) {
-    console.error('Email verification error:', error);
+    } catch (error) {
+    console.error('========== EMAIL VERIFICATION ERROR ==========');
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Full error:', error);
+    console.error('=============================================');
 
     return res.status(500).json({
       message: 'Failed to send email verification code',
