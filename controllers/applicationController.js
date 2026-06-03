@@ -317,11 +317,41 @@ const updateApplicationStatus = async (req, res) => {
     });
   }
 };
+const downloadApplicationResume = async (req, res) => {
+  try {
+    const application = await Application.findById(req.params.id).populate('job');
 
+    if (!application) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+
+    const isAdmin = req.user.role === 'admin';
+    const isOwner =
+      application.job.employer.toString() === req.user._id.toString();
+
+    if (!isAdmin && !isOwner) {
+      return res.status(403).json({ message: 'Not allowed' });
+    }
+
+    const resumeUrl = application.resumeUrl || application.applicationPdfUrl;
+
+    if (!resumeUrl) {
+      return res.status(404).json({ message: 'Resume not found' });
+    }
+
+    return res.redirect(resumeUrl);
+  } catch (error) {
+    return res.status(500).json({
+      message: 'Unable to open resume',
+      error: error.message,
+    });
+  }
+};
 module.exports = {
   applyForJob,
   getMyApplications,
   getEmployerApplications,
   getAllApplicationsForAdmin,
   updateApplicationStatus,
+  downloadApplicationResume,
 };
