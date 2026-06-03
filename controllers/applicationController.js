@@ -19,12 +19,12 @@ const uploadPdfToCloudinary = async (file) => {
     'base64'
   )}`;
 
-  const uploadResult = await cloudinary.uploader.upload(base64File, {
-    folder: 'joblyhub/applications',
-    resource_type: 'raw',
-    format: 'pdf',
-  });
-
+const uploadResult = await cloudinary.uploader.upload(base64File, {
+  folder: 'one4you/applications',
+  resource_type: 'raw',
+  format: 'pdf',
+  access_mode: 'public',
+});
   return {
     url: uploadResult.secure_url,
     publicId: uploadResult.public_id,
@@ -113,20 +113,27 @@ const applyForJob = async (req, res) => {
       });
     }
 
-    const application = await Application.create({
-      job: job._id,
-      applicant: user._id,
-      fullName,
-      email,
-      phone: phone || '',
-      message: message || '',
-      coverLetter: coverLetter || '',
-      resumeLink: resumeLink || '',
-      applicationPdfUrl,
-      applicationPdfPublicId,
-      resumeOriginalName,
-      status: 'submitted',
-    });
+const application = await Application.create({
+  job: job._id,
+  applicant: user._id,
+
+  fullName,
+  email,
+  phone: phone || '',
+
+  message: message || '',
+  coverLetter: coverLetter || '',
+
+  resumeUrl: applicationPdfUrl,
+  resumeOriginalName,
+
+  resumeLink: resumeLink || '',
+
+  applicationPdfUrl,
+  applicationPdfPublicId,
+
+  status: 'submitted',
+});
 
     res.status(201).json({
       message: 'Application submitted successfully',
