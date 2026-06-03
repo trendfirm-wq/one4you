@@ -59,12 +59,11 @@ const applyForJob = async (req, res) => {
       });
     }
 
-    if (job.applicationMethod !== 'joblyhub') {
-      return res.status(400).json({
-        message: 'This job is not accepting applications through JoblyHub',
-      });
-    }
-
+ if (job.applicationMethod !== 'platform') {
+  return res.status(400).json({
+    message: 'This opportunity is not accepting applications through One4You',
+  });
+}
     const existingApplication = await Application.findOne({
       job: job._id,
       applicant: req.user._id,
