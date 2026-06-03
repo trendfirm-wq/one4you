@@ -1,0 +1,5 @@
+[33mffbade7[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Restore Resend email verification with verified domain
+[33m2adf377[m Fix Gmail SMTP email verification
+[33m762fee0[m Switch verification emails to Gmail SMTP
+[33mcad123c[m Switch verification emails to Gmail SMTP
+[33mc2cb10c[m Add email verification debug logs

@@ -17,15 +17,19 @@ const createAdmin = async () => {
 
     const existingAdmin = await User.findOne({ email: adminEmail });
 
-    if (existingAdmin) {
-      existingAdmin.role = 'admin';
-      existingAdmin.emailVerified = true;
-      existingAdmin.phoneVerified = true;
-      await existingAdmin.save();
+  if (existingAdmin) {
+  existingAdmin.password = adminPassword;
+  existingAdmin.role = 'admin';
+  existingAdmin.emailVerified = true;
+  existingAdmin.phoneVerified = true;
+  existingAdmin.agreedToTerms = true;
+  existingAdmin.isActive = true;
 
-      console.log('Existing user updated to admin');
-      process.exit(0);
-    }
+  await existingAdmin.save();
+
+  console.log('Existing admin password reset successfully');
+  process.exit(0);
+}
 
     await User.create({
       name: 'One4You Admin',
