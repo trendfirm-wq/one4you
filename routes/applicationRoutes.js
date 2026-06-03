@@ -7,6 +7,7 @@ const {
   getEmployerApplications,
   getAllApplicationsForAdmin,
   updateApplicationStatus,
+  downloadApplicationResume,
 } = require('../controllers/applicationController');
 
 const { protect, allowRoles } = require('../middleware/authMiddleware');
