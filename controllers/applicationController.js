@@ -319,32 +319,24 @@ const updateApplicationStatus = async (req, res) => {
 };
 const downloadApplicationResume = async (req, res) => {
   try {
-    const application = await Application.findById(req.params.id).populate('job');
+    const application = await Application.findById(req.params.id);
 
     if (!application) {
-      return res.status(404).json({ message: 'Application not found' });
+      return res.status(404).send('Resume not found');
     }
 
-    const isAdmin = req.user.role === 'admin';
-    const isOwner =
-      application.job.employer.toString() === req.user._id.toString();
-
-    if (!isAdmin && !isOwner) {
-      return res.status(403).json({ message: 'Not allowed' });
-    }
-
-    const resumeUrl = application.resumeUrl || application.applicationPdfUrl;
+    const resumeUrl =
+      application.resumeUrl ||
+      application.applicationPdfUrl ||
+      application.resumeLink;
 
     if (!resumeUrl) {
-      return res.status(404).json({ message: 'Resume not found' });
+      return res.status(404).send('Resume not found');
     }
 
     return res.redirect(resumeUrl);
   } catch (error) {
-    return res.status(500).json({
-      message: 'Unable to open resume',
-      error: error.message,
-    });
+    return res.status(500).send('Unable to open resume');
   }
 };
 module.exports = {
@@ -353,5 +345,5 @@ module.exports = {
   getEmployerApplications,
   getAllApplicationsForAdmin,
   updateApplicationStatus,
-  downloadApplicationResume,
+  downloadApplicationResume,  
 };

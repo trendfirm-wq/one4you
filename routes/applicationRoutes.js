@@ -70,10 +70,5 @@ router.put(
   allowRoles('employer', 'admin'),
   updateApplicationStatus
 );
-router.get(
-  '/:id/resume',
-  protect,
-  allowRoles('employer', 'admin'),
-  downloadApplicationResume
-);
+router.get('/:id/resume', downloadApplicationResume);
 module.exports = router;
